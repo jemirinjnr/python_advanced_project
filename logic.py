@@ -68,6 +68,10 @@ class Game:
         self.root.title("Escape Python Advanced")
         self.root.geometry("800x600")
         self.level = 1
+        # Style for progress bar
+        self.style = ttk.Style(self.root)
+        self.style.theme_use('default')
+        self.style.configure("Green.Horizontal.TProgressbar", foreground="#006400", background="#006400")
 
         self.bg_image = Image.open("background_fullscreen.png")
         self.bg_photo = ImageTk.PhotoImage(self.bg_image)
@@ -92,14 +96,12 @@ class Game:
 
     def start_level(self):
         self.clear_window()
-        self.questions = self.levels[self.level]()
-        self.shuffled_questions = self.questions.copy()
-        random.shuffle(self.shuffled_questions)
-        self.questions = self.shuffled_questions
+        self.questions = self.levels[self.level]()  # Get fresh questions list
+        self.questions = random.sample(self.questions, len(self.questions))  # Shuffle fresh copy
         self.collected_codes = []
         self.current_question = 0
 
-        # NEW: Reset hint tracking for the level
+        # Reset hint tracking for the level
         self.hint_count = 0
         self.max_hints = 3
 
@@ -108,7 +110,14 @@ class Game:
     def show_question(self):
         self.clear_window()
         self.frame = tk.Frame(self.canvas, bg="#000000", bd=0)
-        self.frame.place(x=20, y=20)
+        self.frame.place(x=20, y=60)
+
+        # NEW: Progress bar with dark green fill
+        self.progress = ttk.Progressbar(self.frame, orient="horizontal", length=300,
+                                        mode="determinate", style="Green.Horizontal.TProgressbar")
+        self.progress["maximum"] = len(self.questions)
+        self.progress["value"] = self.current_question
+        self.progress.pack(anchor="w", pady=(10, 0))
 
         if self.current_question < len(self.questions):
             q = self.questions[self.current_question]
@@ -152,6 +161,7 @@ class Game:
                 'order': self.questions[self.current_question]['order']
             })
             self.current_question += 1
+            self.progress["value"] = self.current_question  # Update progress bar
             self.show_question()
         else:
             messagebox.showwarning("Try Again", "Incorrect answer. Please try again.")
