@@ -98,6 +98,11 @@ class Game:
         self.questions = self.shuffled_questions
         self.collected_codes = []
         self.current_question = 0
+
+        # NEW: Reset hint tracking for the level
+        self.hint_count = 0
+        self.max_hints = 3
+
         self.show_question()
 
     def show_question(self):
@@ -108,7 +113,6 @@ class Game:
         if self.current_question < len(self.questions):
             q = self.questions[self.current_question]
 
-            # Question label and question content separated
             self.label_header = tk.Label(self.frame,
                                          text=f"Level {self.level} - Question {self.current_question + 1}",
                                          font=("Arial", 20, "bold"), bg="#000000", fg="#0000ff")
@@ -127,6 +131,12 @@ class Game:
 
             self.hint_btn = tk.Button(self.frame, text="Hint", command=self.show_hint, font=("Arial", 16))
             self.hint_btn.pack(anchor="w")
+
+            # NEW: Hint usage counter
+            self.hint_counter_label = tk.Label(self.frame,
+                                               text=f"Hints used: {self.hint_count}/{self.max_hints}",
+                                               font=("Arial", 14), bg="#000000", fg="#ffcc00")
+            self.hint_counter_label.pack(anchor="w", pady=(5, 0))
         else:
             self.prompt_code_entry()
 
@@ -147,8 +157,33 @@ class Game:
             messagebox.showwarning("Try Again", "Incorrect answer. Please try again.")
 
     def show_hint(self):
+        if self.hint_count >= self.max_hints:
+            messagebox.showwarning("Hint Limit Reached", "You have used all your hints for this level.")
+            return
+
+        self.hint_count += 1
         hint = self.questions[self.current_question]["hint"]
-        messagebox.showinfo("Hint", hint)
+
+        # Custom hint popup window
+        hint_window = tk.Toplevel(self.root)
+        hint_window.title("Hint")
+        hint_window.geometry("300x200")
+        hint_window.configure(bg="#000000")  # Teal color
+
+        label = tk.Label(hint_window, text=f"HINT ({self.hint_count}/{self.max_hints})",
+                         font=("Arial", 18, "bold"), bg="#000000", fg="white")
+        label.pack(pady=(20, 10))
+
+        hint_label = tk.Label(hint_window, text=hint, wraplength=350, justify="center",
+                              font=("Arial", 16), bg="#000000", fg="white")
+        hint_label.pack(pady=(0, 20))
+
+        ok_button = tk.Button(hint_window, text="Got it", command=hint_window.destroy,
+                              font=("Arial", 16), bg="white", fg="black")
+        ok_button.pack()
+
+        # Update the hint usage display
+        self.hint_counter_label.config(text=f"Hints used: {self.hint_count}/{self.max_hints}")
 
     def prompt_code_entry(self):
         self.clear_window()
