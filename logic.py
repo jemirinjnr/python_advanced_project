@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from PIL import Image, ImageTk
 import random
+import os
 
 class SplashScreen(tk.Toplevel):
     def __init__(self, parent, on_close):
@@ -32,12 +33,14 @@ class SplashScreen(tk.Toplevel):
             self.destroy()
             self.on_close()
 
+
+
 class InstructionScreen(tk.Toplevel):
     def __init__(self, parent, on_start):
         super().__init__(parent)
         self.on_start = on_start
         self.title("Escape Python Advanced - How to Play")
-        self.geometry("600x400+500+250")
+        self.geometry("700x600")
         self.configure(bg="#000000")
 
         instruction_text = (
@@ -54,24 +57,133 @@ class InstructionScreen(tk.Toplevel):
                          bg="#000000", fg="#ffffff")
         label.pack(pady=20)
 
+        self.selected = tk.StringVar(value="Medium")
+
+        diff_label = tk.Label(self, text="Select Difficulty:", font=("Arial", 20, "bold"), bg="#000000", fg="white")
+        diff_label.pack(pady=(10, 5))
+
+        options = [("Easy (Unlimited Time)", "Easy"),
+                   ("Medium (10 minutes)", "Medium"),
+                   ("Hard (5 minutes)", "Hard"),
+                   ("Impossible (3 minutes)", "Impossible")]
+
+        for text, mode in options:
+            rb = tk.Radiobutton(self, text=text, variable=self.selected, value=mode,
+                                font=("Arial", 16), bg="#000000", fg="white",
+                                selectcolor="#333333", activebackground="#222222", activeforeground="white")
+            rb.pack(anchor="w", padx=60)
+
         start_btn = tk.Button(self, text="Start Game", font=("Arial", 20), bg="#ffffff", fg="#000000",
                               command=self.start_game)
         start_btn.pack(pady=20)
 
+        quit_btn = tk.Button(self, text="Quit", font=("Arial", 16), bg="#ffffff", fg="#000000",
+                             command=self.quit_game)
+        quit_btn.pack()
+
     def start_game(self):
+        difficulty = self.selected.get()
         self.destroy()
-        self.on_start()
+        self.on_start(difficulty)
+
+    def quit_game(self):
+        self.destroy()
+        self.master.destroy()
+
+def load_questions_from_file(level):
+        filename = "questions.txt"
+        questions = []
+        current_level = None
+
+        if not os.path.exists(filename):
+            messagebox.showerror("Missing File", f"{filename} not found.")
+            return []
+
+        with open(filename, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        question_data = {}
+        current_key = None
+        buffer = []
+        def flush_buffer():
+            if current_key and buffer:
+                question_data[current_key]="\n".join(buffer).strip()
+
+        for line in lines:
+            line = line.rstrip("\n")
+
+            if not line.strip():
+                flush_buffer()
+                if question_data and current_level == level:
+                    questions.append(question_data)
+                question_data = {}
+                current_key = None
+                buffer = []
+                continue
+
+            if line.startswith("# Level"):
+                flush_buffer()
+                try:
+                    current_level = int(line.split("Level")[1].strip())
+                except ValueError:
+                    current_level = None
+                question_data = {}
+                current_key = None
+                buffer = []
+                continue
+
+            if current_level == level:
+                if line.startswith("QUESTION:"):
+                    flush_buffer()
+                    current_key = "question"
+                    buffer = [line[len("QUESTION:"):].strip()]
+                elif line.startswith("ANSWER:"):
+                    flush_buffer()
+                    current_key = "answer"
+                    buffer = [line[len("ANSWER:"):].strip()]
+                elif line.startswith("HINT:"):
+                    flush_buffer()
+                    current_key = "hint"
+                    buffer = [line[len("HINT:"):].strip()]
+                elif line.startswith("CODE:"):
+                    flush_buffer()
+                    current_key = "code"
+                    buffer = [line[len("CODE:"):].strip()]
+                elif line.startswith("ORDER:"):
+                    flush_buffer()
+                    current_key = "order"
+                    try:
+                        question_data["order"] = int(line[len("ORDER:"):].strip())
+                    except ValueError:
+                        question_data["order"] = 0
+                    current_key = None
+                    buffer = []
+                else:
+                    buffer.append(line)
+        flush_buffer()
+        if question_data and current_level == level:
+            questions.append(question_data)
+
+        return questions
+
 
 class Game:
-    def __init__(self, root):
+    def __init__(self, root, difficulty):
         self.root = root
         self.root.title("Escape Python Advanced")
         self.root.geometry("800x600")
         self.level = 1
-        # Style for progress bar
+
+        self.root.protocol("WM_DELETE_WINDOW", self.cleanup_and_exit)
+
         self.style = ttk.Style(self.root)
         self.style.theme_use('default')
         self.style.configure("Green.Horizontal.TProgressbar", foreground="#006400", background="#006400")
+
+        if not os.path.exists("background_fullscreen.png"):
+            messagebox.showerror("Missing File", "Required background image not found.")
+            self.root.destroy()
+            return
 
         self.bg_image = Image.open("background_fullscreen.png")
         self.bg_photo = ImageTk.PhotoImage(self.bg_image)
@@ -81,14 +193,46 @@ class Game:
         self.canvas.create_image(0, 0, image=self.bg_photo, anchor="nw")
 
         self.frame = None
-
         self.levels = {
             1: self.get_level1_questions,
             2: self.get_level2_questions,
             3: self.get_level3_questions
         }
 
+        self.difficulty = difficulty
+        self.time_left = self.set_time_for_difficulty(difficulty)
+        self.timer_id = None
+
+        self.timer_label = tk.Label(self.root, text="", font=("Arial", 16, "bold"),
+                                    bg="#000000", fg="#ffffff")
+        self.timer_label.place(x=650, y=50)
+
+        self.collected_codes = []
+
         self.start_level()
+
+        if self.time_left is not None:
+            self.start_timer()
+        else:
+            self.timer_label.config(text="Unlimited Time")
+
+    def confirm_quit(self):
+        answer = messagebox.askyesno("Quit Game", "Are you sure you want to quit?")
+        if answer:
+            self.root.destroy()
+
+    def add_quit_button(self):
+        quit_btn = tk.Button(self.root, text="Quit", font=("Arial", 14),
+                             command=self.confirm_quit, bg="#ff4d4d", fg="white")
+        quit_btn.place(x=720, y=550)  # Adjust position as needed
+
+    def set_time_for_difficulty(self, difficulty):
+        return {
+            "Easy": None,
+            "Medium": 10 * 60,
+            "Hard": 5 * 60,
+            "Impossible": 3 * 60
+        }.get(difficulty, None)
 
     def clear_window(self):
         if self.frame is not None:
@@ -96,52 +240,48 @@ class Game:
 
     def start_level(self):
         self.clear_window()
-        self.questions = self.levels[self.level]()  # Get fresh questions list
-        self.questions = random.sample(self.questions, len(self.questions))  # Shuffle fresh copy
         self.collected_codes = []
+        self.questions = self.levels[self.level]()
+        self.shuffled_questions = self.questions.copy()
+        random.shuffle(self.shuffled_questions)
+        self.questions = self.shuffled_questions
         self.current_question = 0
-
-        # Reset hint tracking for the level
         self.hint_count = 0
         self.max_hints = 3
-
+        self.hint_window = None
         self.show_question()
+        self.add_quit_button()
 
     def show_question(self):
         self.clear_window()
         self.frame = tk.Frame(self.canvas, bg="#000000", bd=0)
-        self.frame.place(x=20, y=60)
+        self.frame.place(x=20, y=40)
 
-        # NEW: Progress bar with dark green fill
-        self.progress = ttk.Progressbar(self.frame, orient="horizontal", length=300,
-                                        mode="determinate", style="Green.Horizontal.TProgressbar")
-        self.progress["maximum"] = len(self.questions)
-        self.progress["value"] = self.current_question
-        self.progress.pack(anchor="w", pady=(10, 0))
+        self.progress_bar = ttk.Progressbar(self.canvas, orient="horizontal", length=760,
+                                            mode="determinate", style="Green.Horizontal.TProgressbar")
+        self.progress_bar.place(x=20, y=20)
+        self.progress_bar["maximum"] = len(self.questions)
+        self.progress_bar["value"] = self.current_question
 
         if self.current_question < len(self.questions):
             q = self.questions[self.current_question]
 
-            self.label_header = tk.Label(self.frame,
-                                         text=f"Level {self.level} - Question {self.current_question + 1}",
-                                         font=("Arial", 20, "bold"), bg="#000000", fg="#0000ff")
-            self.label_header.pack(anchor="w", pady=(0, 5))
+            tk.Label(self.frame, text=f"Level {self.level} - Question {self.current_question + 1}",
+                     font=("Arial", 20, "bold"), bg="#000000", fg="#0000ff").pack(anchor="w", pady=(0, 5))
 
-            self.label_question = tk.Label(self.frame, text=q['question'],
-                                           wraplength=1000, justify="left", font=("Arial", 18),
-                                           bg="#000000", fg="#ffffff")
-            self.label_question.pack(anchor="w", pady=(0, 10))
+            tk.Label(self.frame, text=q['question'], wraplength=1000, justify="left",
+                     font=("Arial", 18), bg="#000000", fg="#ffffff").pack(anchor="w", pady=(0, 10))
 
-            self.entry = tk.Entry(self.frame, width=30, font=("Arial", 16))
-            self.entry.pack(anchor="w", pady=(0, 10))
+            self.answer_entry = tk.Entry(self.frame, width=30, font=("Arial", 16))
+            self.answer_entry.pack(anchor="w", pady=(0, 10))
 
-            self.submit_btn = tk.Button(self.frame, text="Submit", command=self.check_answer, font=("Arial", 16))
-            self.submit_btn.pack(anchor="w", pady=(0, 5))
+            tk.Button(self.frame, text="Submit", command=self.check_answer,
+                      font=("Arial", 16)).pack(anchor="w", pady=(0, 5))
 
-            self.hint_btn = tk.Button(self.frame, text="Hint", command=self.show_hint, font=("Arial", 16))
+            self.hint_btn = tk.Button(self.frame, text="Hint", command=self.show_hint,
+                                      font=("Arial", 16))
             self.hint_btn.pack(anchor="w")
 
-            # NEW: Hint usage counter
             self.hint_counter_label = tk.Label(self.frame,
                                                text=f"Hints used: {self.hint_count}/{self.max_hints}",
                                                font=("Arial", 14), bg="#000000", fg="#ffcc00")
@@ -150,7 +290,7 @@ class Game:
             self.prompt_code_entry()
 
     def check_answer(self):
-        user_answer = self.entry.get().strip()
+        user_answer = self.answer_entry.get().strip()
         correct_answer = self.questions[self.current_question]["answer"]
 
         if user_answer.lower() == correct_answer.lower():
@@ -161,7 +301,7 @@ class Game:
                 'order': self.questions[self.current_question]['order']
             })
             self.current_question += 1
-            self.progress["value"] = self.current_question  # Update progress bar
+            self.progress_bar["value"] = self.current_question
             self.show_question()
         else:
             messagebox.showwarning("Try Again", "Incorrect answer. Please try again.")
@@ -171,51 +311,53 @@ class Game:
             messagebox.showwarning("Hint Limit Reached", "You have used all your hints for this level.")
             return
 
+        if self.hint_window and self.hint_window.winfo_exists():
+            return
+
         self.hint_count += 1
         hint = self.questions[self.current_question]["hint"]
 
-        # Custom hint popup window
-        hint_window = tk.Toplevel(self.root)
-        hint_window.title("Hint")
-        hint_window.geometry("300x200")
-        hint_window.configure(bg="#000000")  # Teal color
+        self.hint_window = tk.Toplevel(self.root)
+        self.hint_window.title("Hint")
+        self.hint_window.geometry("400x250")  # Increased from 300x200
+        self.hint_window.configure(bg="#000000")
 
-        label = tk.Label(hint_window, text=f"HINT ({self.hint_count}/{self.max_hints})",
-                         font=("Arial", 18, "bold"), bg="#000000", fg="white")
-        label.pack(pady=(20, 10))
+        tk.Label(self.hint_window, text=f"HINT ({self.hint_count}/{self.max_hints})",
+                 font=("Arial", 18, "bold"), bg="#000000", fg="white").pack(pady=(20, 10))
 
-        hint_label = tk.Label(hint_window, text=hint, wraplength=350, justify="center",
-                              font=("Arial", 16), bg="#000000", fg="white")
-        hint_label.pack(pady=(0, 20))
+        tk.Label(self.hint_window, text=hint, wraplength=350, justify="center",
+                 font=("Arial", 16), bg="#000000", fg="white").pack(pady=(0, 20))
 
-        ok_button = tk.Button(hint_window, text="Got it", command=hint_window.destroy,
-                              font=("Arial", 16), bg="white", fg="black")
-        ok_button.pack()
+        tk.Button(self.hint_window, text="Got it", command=self.hint_window.destroy,
+                  font=("Arial", 16), bg="white", fg="black").pack()
 
-        # Update the hint usage display
         self.hint_counter_label.config(text=f"Hints used: {self.hint_count}/{self.max_hints}")
 
     def prompt_code_entry(self):
+        if self.timer_id:
+            self.root.after_cancel(self.timer_id)
+
         self.clear_window()
         self.frame = tk.Frame(self.canvas, bg="#000000", bd=0)
-        self.frame.place(x=20, y=20)
+        self.frame.place(x=20, y=40)
 
-        self.label = tk.Label(self.frame, text=f"Level {self.level} Complete!\n\n"
-                                               f"Enter the 6-character access code to continue:",
-                              font=("Arial", 20), bg="#000000", fg="#ffffff")
-        self.label.pack(anchor="w", pady=(0, 10))
+        tk.Label(self.frame, text=f"Level {self.level} Complete!\n\n"
+                                  f"Enter the 6-character access code to continue:",
+                 font=("Arial", 20), bg="#000000", fg="#ffffff").pack(anchor="w", pady=(0, 10))
 
-        self.entry = tk.Entry(self.frame, width=20, font=("Arial", 18))
-        self.entry.pack(anchor="w", pady=(0, 10))
+        self.code_entry = tk.Entry(self.frame, width=20, font=("Arial", 18))
+        self.code_entry.pack(anchor="w", pady=(0, 10))
 
-        self.submit_btn = tk.Button(self.frame, text="Enter Code", command=self.verify_code, font=("Arial", 18))
-        self.submit_btn.pack(anchor="w")
+        tk.Button(self.frame, text="Enter Code", command=self.verify_code,
+                  font=("Arial", 18)).pack(anchor="w")
+        self.add_quit_button()
 
     def verify_code(self):
-        entered_code = self.entry.get().strip()
+        entered_code = self.code_entry.get().strip()
         self.code_segments = [c['code'] for c in sorted(self.collected_codes, key=lambda x: x['order'])]
         correct_code = ''.join(self.code_segments)
-        if entered_code == correct_code:
+
+        if entered_code.lower() == correct_code.lower():
             if self.level == 3:
                 messagebox.showinfo("🏁 Game Complete!", "You have escaped for now!\nYour project is next...")
                 self.root.destroy()
@@ -226,51 +368,51 @@ class Game:
         else:
             messagebox.showerror("Access Denied", "Incorrect code. Please try again.")
 
+    def start_timer(self):
+        self.update_timer()
+
+    def update_timer(self):
+        if self.time_left is None:
+            return
+
+        mins, secs = divmod(self.time_left, 60)
+        self.timer_label.config(text=f"Time left: {mins:02d}:{secs:02d}")
+
+        if self.time_left <= 0:
+            messagebox.showinfo("Time's Up", "You have run out of time! Game over.")
+            self.root.destroy()
+            return
+
+        self.time_left -= 1
+        self.timer_id = self.root.after(1000, self.update_timer)
+
+    def cleanup_and_exit(self):
+        if self.timer_id:
+            self.root.after_cancel(self.timer_id)
+        self.root.destroy()
+
+    # Question methods unchanged...
     def get_level1_questions(self):
-        return [
-            {"question": "Fix the error in this code:\n\ndef divide(a, b):\n    return a / b\n\nprint(divide(10, 0))",
-             "answer": "ZeroDivisionError", "hint": "What happens when dividing by zero?", "code": "A1", "order": 1},
-            {"question": "What will this print?\n\nclass Dog:\n    def bark(self):\n        return 'Woof!'\n\nd = Dog()\nprint(d.bark())",
-             "answer": "Woof!", "hint": "The method returns a string.", "code": "B2", "order": 2},
-            {"question": "What will this print?\n\nclass Animal:\n    def sound(self):\n        raise NotImplementedError\n\nclass Dog(Animal):\n    def sound(self):\n        return 'Bark!'\n\na = Dog()\nprint(a.sound())",
-             "answer": "Bark!", "hint": "Dog overrides Animal method.", "code": "C3", "order": 3},
-        ]
+        return load_questions_from_file(1)
 
     def get_level2_questions(self):
-        return [
-            {"question": "What will this print?\n\nclass Animal:\n    def speak(self): return '...'\n\n"
-                         "class Dog(Animal):\n    def speak(self): return 'Bark'\n\nclass Cat(Animal):\n    "
-                         "def speak(self): return 'Meow'\n\nanimals = [Dog(), Cat()]\nfor a in animals:\n    "
-                         "print(a.speak())",
-             "answer": "Bark Meow", "hint": "Each class defines its own speak().", "code": "D4", "order": 1},
-            {"question": "Which regex pattern matches any 3-digit number?",
-             "answer": "\\d{3}", "hint": "Use the curly braces to match digits.", "code": "E5", "order": 2},
-            {"question": "What does this print?\n\nimport re\ntext = 'Call 911 or 112'\nprint(re.findall(r'\\d+', text))",
-             "answer": "['911', '112']", "hint": "findall returns all digit groups.", "code": "F6", "order": 3},
-        ]
+        return load_questions_from_file(2)
 
     def get_level3_questions(self):
-        return [
-            {"question": "What widget does this code create?\n\nimport tkinter as tk\nroot = tk.Tk()\n"
-                         "entry = tk.Entry(root)\nentry.pack()\nroot.mainloop()",
-             "answer": "Entry", "hint": "Single-line input box.", "code": "G7", "order": 1},
-            {"question": "What shape does this draw?\n\nimport turtle\nt = turtle.Turtle()\nt.circle(50)",
-             "answer": "Circle", "hint": "Round shape, 50-pixel radius.", "code": "H8", "order": 2},
-            {"question": "What happens when the button is clicked?\n\nimport tkinter as tk\ndef say_hello():\n    "
-                         "print('Hello')\n\nroot = tk.Tk()\nbtn = tk.Button(root, text='Click me', command=say_hello)"
-                         "\nbtn.pack()\nroot.mainloop()",
-             "answer": "Prints Hello", "hint": "It triggers the function.", "code": "I9", "order": 3},
-        ]
+        return load_questions_from_file(3)
 
-def start_game():
-    def launch_main_game():
-        root.deiconify()
-        Game(root)
-
-    InstructionScreen(root, launch_main_game)
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()
-    splash = SplashScreen(root, start_game)
-    root.mainloop()
+
+    def start_game(difficulty):
+        root.deiconify()
+        Game(root, difficulty)
+
+    def show_instructions():
+        InstructionScreen(root, on_start=start_game)
+
+    splash = SplashScreen(root, on_close=show_instructions)
+    splash.mainloop()
+
