@@ -1,5 +1,6 @@
 # Level 1
 
+ORDER: 1
 QUESTION: Fix the error in this code:
     def divide(a, b):
         return a / b
@@ -7,8 +8,8 @@ QUESTION: Fix the error in this code:
 ANSWER: ZeroDivisionError
 HINT: What happens when dividing by zero?
 CODE: A1
-ORDER: 1
 
+ORDER: 2
 QUESTION: What will this print?
     class Dog:
         def bark(self):
@@ -18,8 +19,8 @@ QUESTION: What will this print?
 ANSWER: Woof!
 HINT: The method returns a string.
 CODE: B2
-ORDER: 2
 
+ORDER: 3
 QUESTION: This will print what?
     class Animal:
         def sound(self):
@@ -32,10 +33,10 @@ QUESTION: This will print what?
 ANSWER: Bark!
 HINT: Dog overrides Animal method.
 CODE: C3
-ORDER: 3
 
 # Level 2
 
+ORDER: 1
 QUESTION: What will this print?
     class Animal:
         def speak(self): return '...'
@@ -49,14 +50,14 @@ QUESTION: What will this print?
 ANSWER: Bark Meow
 HINT: Each class defines its own speak().
 CODE: D4
-ORDER: 1
 
+ORDER: 2
 QUESTION: Which regex pattern matches any 3-digit number?
 ANSWER: \d{3}
 HINT: Use the curly braces to match digits.
 CODE: E5
-ORDER: 2
 
+ORDER: 3
 QUESTION: What does this print?
     import re
     text = 'Call 911 or 112'
@@ -64,10 +65,10 @@ QUESTION: What does this print?
 ANSWER: ['911', '112']
 HINT: findall returns all digit groups.
 CODE: F6
-ORDER: 3
 
 # Level 3
 
+ORDER: 1
 QUESTION: What widget does this code create?
     import tkinter as tk
     root = tk.Tk()
@@ -77,8 +78,8 @@ QUESTION: What widget does this code create?
 ANSWER: Entry
 HINT: Single-line input box.
 CODE: G7
-ORDER: 1
 
+ORDER: 2
 QUESTION: What shape does this draw?
     import turtle
     t = turtle.Turtle()
@@ -86,8 +87,8 @@ QUESTION: What shape does this draw?
 ANSWER: Circle
 HINT: Round shape, 50-pixel radius.
 CODE: H8
-ORDER: 2
 
+ORDER: 3
 QUESTION: What happens when the button is clicked?
     import tkinter as tk
     def say_hello():
@@ -99,4 +100,4 @@ QUESTION: What happens when the button is clicked?
 ANSWER: Prints Hello
 HINT: It triggers the function.
 CODE: I9
-ORDER: 3
+
