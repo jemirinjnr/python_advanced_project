@@ -83,11 +83,10 @@ class Game:
         self.frame = None
 
         self.levels = {
-            1: self.get_level1_questions,
-            2: self.get_level2_questions,
-            3: self.get_level3_questions
+            1: lambda: self.load_questions_from_file(1),
+            2: lambda: self.load_questions_from_file(2),
+            3: lambda: self.load_questions_from_file(3)
         }
-
         self.start_level()
 
     def clear_window(self):
@@ -226,41 +225,60 @@ class Game:
         else:
             messagebox.showerror("Access Denied", "Incorrect code. Please try again.")
 
-    def get_level1_questions(self):
-        return [
-            {"question": "Fix the error in this code:\n\ndef divide(a, b):\n    return a / b\n\nprint(divide(10, 0))",
-             "answer": "ZeroDivisionError", "hint": "What happens when dividing by zero?", "code": "A1", "order": 1},
-            {"question": "What will this print?\n\nclass Dog:\n    def bark(self):\n        return 'Woof!'\n\nd = Dog()\nprint(d.bark())",
-             "answer": "Woof!", "hint": "The method returns a string.", "code": "B2", "order": 2},
-            {"question": "What will this print?\n\nclass Animal:\n    def sound(self):\n        raise NotImplementedError\n\nclass Dog(Animal):\n    def sound(self):\n        return 'Bark!'\n\na = Dog()\nprint(a.sound())",
-             "answer": "Bark!", "hint": "Dog overrides Animal method.", "code": "C3", "order": 3},
-        ]
+    def load_questions_from_file(self, level):
+        questions = []
+        current_question = {}
+        recording = False
 
-    def get_level2_questions(self):
-        return [
-            {"question": "What will this print?\n\nclass Animal:\n    def speak(self): return '...'\n\n"
-                         "class Dog(Animal):\n    def speak(self): return 'Bark'\n\nclass Cat(Animal):\n    "
-                         "def speak(self): return 'Meow'\n\nanimals = [Dog(), Cat()]\nfor a in animals:\n    "
-                         "print(a.speak())",
-             "answer": "Bark Meow", "hint": "Each class defines its own speak().", "code": "D4", "order": 1},
-            {"question": "Which regex pattern matches any 3-digit number?",
-             "answer": "\\d{3}", "hint": "Use the curly braces to match digits.", "code": "E5", "order": 2},
-            {"question": "What does this print?\n\nimport re\ntext = 'Call 911 or 112'\nprint(re.findall(r'\\d+', text))",
-             "answer": "['911', '112']", "hint": "findall returns all digit groups.", "code": "F6", "order": 3},
-        ]
+        with open("questions.txt", "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue  # skip empty lines
 
-    def get_level3_questions(self):
-        return [
-            {"question": "What widget does this code create?\n\nimport tkinter as tk\nroot = tk.Tk()\n"
-                         "entry = tk.Entry(root)\nentry.pack()\nroot.mainloop()",
-             "answer": "Entry", "hint": "Single-line input box.", "code": "G7", "order": 1},
-            {"question": "What shape does this draw?\n\nimport turtle\nt = turtle.Turtle()\nt.circle(50)",
-             "answer": "Circle", "hint": "Round shape, 50-pixel radius.", "code": "H8", "order": 2},
-            {"question": "What happens when the button is clicked?\n\nimport tkinter as tk\ndef say_hello():\n    "
-                         "print('Hello')\n\nroot = tk.Tk()\nbtn = tk.Button(root, text='Click me', command=say_hello)"
-                         "\nbtn.pack()\nroot.mainloop()",
-             "answer": "Prints Hello", "hint": "It triggers the function.", "code": "I9", "order": 3},
-        ]
+                # Detect LEVEL line, case-insensitive and strip spaces
+                if line.upper().startswith("LEVEL:"):
+                    try:
+                        current_level = int(line.split(":")[1].strip())
+                    except Exception:
+                        current_level = None
+                    recording = (current_level == level)
+                    if not recording and current_question:
+                        questions.append(current_question)
+                        current_question = {}
+                    continue
+
+                if not recording:
+                    continue
+
+                # Parse question fields
+                if line.upper().startswith("QUESTION:"):
+                    if current_question:
+                        questions.append(current_question)
+                        current_question = {}
+                    current_question["question"] = line[len("QUESTION:"):].strip()
+                elif line.upper().startswith("ANSWER:"):
+                    current_question["answer"] = line[len("ANSWER:"):].strip()
+                elif line.upper().startswith("HINT:"):
+                    current_question["hint"] = line[len("HINT:"):].strip()
+                elif line.upper().startswith("CODE:"):
+                    current_question["code"] = line[len("CODE:"):].strip()
+                elif line.upper().startswith("ORDER:"):
+                    try:
+                        current_question["order"] = int(line[len("ORDER:"):].strip())
+                    except ValueError:
+                        current_question["order"] = 0
+                else:
+                    # Append to question multiline (if exists)
+                    if "question" in current_question:
+                        current_question["question"] += "\n" + line
+
+        # Append last question if any
+        if current_question:
+            questions.append(current_question)
+
+        return questions
+
 
 def start_game():
     def launch_main_game():
