@@ -1,4 +1,5 @@
-LEVEL: 1
+# Level 1
+
 QUESTION: Fix the error in this code:
     def divide(a, b):
         return a / b
@@ -7,15 +8,18 @@ ANSWER: ZeroDivisionError
 HINT: What happens when dividing by zero?
 CODE: A1
 ORDER: 1
+
 QUESTION: What will this print?
     class Dog:
         def bark(self):
             return 'Woof!'
-    d = Dog()\nprint(d.bark())
+    d = Dog()
+    print(d.bark())
 ANSWER: Woof!
 HINT: The method returns a string.
 CODE: B2
 ORDER: 2
+
 QUESTION: This will print what?
     class Animal:
         def sound(self):
@@ -23,13 +27,15 @@ QUESTION: This will print what?
     class Dog(Animal):
         def sound(self):
             return 'Bark!'
-    a = Dog()\nprint(a.sound())
+    a = Dog()
+    print(a.sound())
 ANSWER: Bark!
 HINT: Dog overrides Animal method.
 CODE: C3
 ORDER: 3
 
-LEVEL: 2
+# Level 2
+
 QUESTION: What will this print?
     class Animal:
         def speak(self): return '...'
@@ -44,20 +50,24 @@ ANSWER: Bark Meow
 HINT: Each class defines its own speak().
 CODE: D4
 ORDER: 1
+
 QUESTION: Which regex pattern matches any 3-digit number?
 ANSWER: \d{3}
 HINT: Use the curly braces to match digits.
 CODE: E5
 ORDER: 2
+
 QUESTION: What does this print?
     import re
     text = 'Call 911 or 112'
-    print(re.findall(r'\\d+', text))
+    print(re.findall(r'\d+', text))
 ANSWER: ['911', '112']
 HINT: findall returns all digit groups.
 CODE: F6
 ORDER: 3
-LEVEL: 3
+
+# Level 3
+
 QUESTION: What widget does this code create?
     import tkinter as tk
     root = tk.Tk()
