@@ -115,7 +115,8 @@ class AdminWindow(tk.Toplevel):
         tk.Button(self, text="View Questions File", font=("Arial", 16),
                   command=self.open_questions_file).pack(pady=10)
 
-        tk.Button(self, text="Modify Question", command=self.modify_question).pack(pady=5)
+        tk.Button(self, text="Modify Question", font=("Arial", 16),
+                  command=self.modify_question).pack(pady=5)
 
         tk.Button(self, text="Close", font=("Arial", 16),
                   command=self.destroy).pack(pady=20)
