@@ -328,11 +328,11 @@ class AdminLogin(tk.Toplevel):
 
         tk.Label(self, text="Admin Login", font=("Arial", 20, "bold"), bg="#1c1c1c", fg="white").pack(pady=10)
 
-        tk.Label(self, text="Username:", bg="#1c1c1c", fg="white", font=("Arial", 14)).pack()
+        tk.Label(self, text="Username:", bg="#1c1c1c", fg="white", font=("Arial", 14)).pack(pady=5)
         self.username_entry = tk.Entry(self, font=("Arial", 14))
         self.username_entry.pack(pady=5)
 
-        tk.Label(self, text="Password:", bg="#1c1c1c", fg="white", font=("Arial", 14)).pack()
+        tk.Label(self, text="Password:", bg="#1c1c1c", fg="white", font=("Arial", 14)).pack(pady=5)
         self.password_entry = tk.Entry(self, font=("Arial", 14), show="*")
         self.password_entry.pack(pady=5)
 
@@ -371,7 +371,7 @@ class AdminLogin(tk.Toplevel):
 
             # Save username and password
         with open("admin_credentials.txt", "a") as f:
-            f.write(f"{username},{password}\n")
+            f.write(f"{username}:{password}\n")
 
         messagebox.showinfo("Success", "Admin account created successfully!")
         self.new_username_entry.delete(0, tk.END)
@@ -382,7 +382,7 @@ class AdminLogin(tk.Toplevel):
             return False
         with open("admin_credentials.txt", "r") as f:
             for line in f:
-                saved_username = line.strip().split(",")[0]
+                saved_username = line.strip().split(":")[0]
                 if username == saved_username:
                     return True
         return False
@@ -395,15 +395,26 @@ class AdminLogin(tk.Toplevel):
             messagebox.showerror("Error", "No admin credentials found. Create an admin account.")
             return
 
-        with open(self.credentials_file, "r") as f:
-            stored_username, stored_password = f.read().strip().split(":")
+        try:
+            with open(self.credentials_file, "r") as f:
+                credentials = [line.strip() for line in f if line.strip()]
 
-        if username == stored_username and password == stored_password:
-            messagebox.showinfo("Success", "Login successful!")
-            self.destroy()
-            self.on_success()
-        else:
+            for cred in credentials:
+                try:
+                    stored_username, stored_password = cred.split(":")
+                    if username == stored_username and password == stored_password:
+                        messagebox.showinfo("Success", "Login successful!")
+                        self.destroy()
+                        self.on_success()
+                        return  # Exit after successful login
+                except ValueError:
+                    continue  # Skip malformed lines
+
             messagebox.showerror("Error", "Incorrect username or password.")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
 
 def load_questions_from_file(level):
         filename = "questions.txt"
