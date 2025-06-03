@@ -42,7 +42,7 @@ class InstructionScreen(tk.Toplevel):
         self.title("Escape Python Advanced - How to Play")
         self.geometry("700x600")
         self.configure(bg="#000000")
-        # Create a hidden button (1x1 pixel) at the bottom-right corner
+        # Create a hidden button (1x1 pixel) in the bottom-right corner
         hidden_btn = tk.Button(self, text="", command=self.open_admin_login,
                                bg="#000000", activebackground="#000000", borderwidth=0, highlightthickness=0)
         hidden_btn.place(x=680, y=560, width=20, height=20)  # small but clickable area
@@ -320,7 +320,7 @@ class AdminLogin(tk.Toplevel):
     def __init__(self, parent, on_success):
         super().__init__(parent)
         self.title("Admin Login")
-        self.geometry("400x250")
+        self.geometry("400x400")
         self.configure(bg="#1c1c1c")
         self.on_success = on_success
         self.credentials_file = "admin_credentials.txt"
