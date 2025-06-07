@@ -74,14 +74,14 @@ The game includes a comprehensive admin panel for educators and content managers
 Questions are stored in `questions.txt` with the following format:
 
 
-# Level 1
+- # Level 1
 QUESTION: What is a Python decorator?
 ANSWER: A function that modifies another function
 HINT: Think about the @ symbol
 CODE: AB
 ORDER: 1
 
-# Level 2
+- # Level 2
 QUESTION: Explain list comprehensions
 ANSWER: Concise way to create lists
 HINT: Square brackets with for loops
