@@ -69,16 +69,6 @@ The game includes a comprehensive admin panel for educators and content managers
 2. Create an admin account (first time) or login with existing credentials
 3. Access the question management interface
 
-## 📁 File Structure
-
-escape-python-advanced/
-├── logic.py                 # Main game logic and UI
-├── questions.txt            # Question database (required)
-├── admin_credentials.txt    # Admin login credentials (auto-generated)
-├── background_fullscreen.png # Background image (optional)
-└── README.md               # This file
-
-
 ## 🔧 Question File Format
 
 Questions are stored in `questions.txt` with the following format:
